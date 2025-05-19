@@ -22,14 +22,13 @@ static void* recv_thread(void *arg) {
             fflush(stdout);
         } else if (n == 0) {
             printf("[RECV] Сервер закрыл соединение.\n");
-            break;
+            exit(0);
         } else {
             if (errno == EINTR) continue;
             perror("recv");
-            break;
+            pthread_exit(NULL);
         }
     }
-    exit(0);
     return NULL;
 }
 
@@ -44,7 +43,9 @@ int main(int argc, char *argv[]) {
     int port = atoi(argv[2]);
 
     sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0) { perror("socket"); return 1; }
+    if (sock < 0) { 
+        perror("socket"); return 1; 
+    }
 
     struct sockaddr_in srv = {
         .sin_family = AF_INET,
@@ -61,14 +62,12 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-
     send(sock, "MONITOR\n", 8, 0);
 
     pthread_t tid;
     pthread_create(&tid, NULL, recv_thread, NULL);
 
-
-    pause();
+    pthread_join(tid, NULL);
 
     close(sock);
     return 0;

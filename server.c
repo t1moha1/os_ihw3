@@ -237,6 +237,10 @@ void* handle_client(void *arg) {
         if (len <= 0) break;
         buf[len] = '\0';
 
+        if (strncmp(buf, "MONITOR", 7) != 0) {
+            broadcast_monitor(buf);
+        }
+
         if (strncmp(buf, "CHECKIN", 7) == 0) {
             handle_checkin(sock, buf + 7);
         }
@@ -269,11 +273,15 @@ void* handle_client(void *arg) {
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <port>\n", argv[0]);
-        exit(EXIT_FAILURE);
+        exit(1);
     }
     int port = atoi(argv[1]);
 
     signal(SIGPIPE, SIG_IGN);
+
+   
+    setvbuf(stdout, NULL, _IOLBF, 0);
+
     if (atexit(clean_queue)   != 0 ||
         atexit(clean_listener) != 0 ||
         atexit(finally_msg)    != 0)
@@ -287,14 +295,19 @@ int main(int argc, char *argv[]) {
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = 0;
     if (sigaction(SIGINT, &sa, NULL) < 0) {
-        perror("sigaction");
+        perror("sigaction SIGINT");
+        exit(1);
+    }
+    // ловим также SIGTERM, чтобы при 'kill' выполнить корректный shutdown
+    if (sigaction(SIGTERM, &sa, NULL) < 0) {
+        perror("sigaction SIGTERM");
         exit(1);
     }
 
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd < 0) { 
-        perror("socket"); 
-        exit(1); 
+    if (server_fd < 0) {
+        perror("socket");
+        exit(1);
     }
     
     int opt = 1;

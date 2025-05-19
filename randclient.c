@@ -92,6 +92,7 @@ int main(int argc, char *argv[]) {
         ssize_t n = read_line(sock, resp, sizeof(resp));
         if (n > 0) {
             fputs(resp, stdout);
+            fflush(stdout);
         } else if (n == 0) {
             fprintf(stderr, "Server closed connection\n");
             break;

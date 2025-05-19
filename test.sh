@@ -21,9 +21,8 @@ MO=$!
 
 
 echo "Запускаем randclient (sleep=1)..."
-./randclient 127.0.0.1 $PORT 1 &
+./randclient 127.0.0.1 $PORT 1 > randclient.log 2>&1 &
 RC=$!
-
 
 echo "Работаем 15 секунд..."
 sleep 15
