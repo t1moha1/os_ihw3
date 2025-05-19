@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include <pthread.h>
 #include <signal.h>
 #include <errno.h>
@@ -13,6 +15,7 @@
 #define BACKLOG        10
 #define DAY_TIME       6
 #define MAX_MONITORS   10
+#define TAG_BUF_SIZE   512
 
 static guest hotel[MAX_ROOMS];
 static int free_counter = MAX_ROOMS;
@@ -77,13 +80,29 @@ void broadcast_monitor(const char *msg) {
     pthread_mutex_unlock(&mtx_monitors);
 }
 
+
+static void tag_and_broadcast(int sock, const char *msg) {
+    struct sockaddr_in peer;
+    socklen_t peerlen = sizeof(peer);
+    if (getpeername(sock, (struct sockaddr*)&peer, &peerlen) == 0) {
+        char ip[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &peer.sin_addr, ip, sizeof(ip));
+        int port = ntohs(peer.sin_port);
+        char tagged[TAG_BUF_SIZE];
+        snprintf(tagged, sizeof(tagged), "[%s:%d] %s", ip, port, msg);
+        broadcast_monitor(tagged);
+    } else {
+        broadcast_monitor(msg);
+    }
+}
+
 void handle_checkin(int sock, const char *args) {
     char name[NAME_LEN];
     int days;
     if (sscanf(args, "%31s %d", name, &days) != 2) {
         const char *err = "ERROR неверный формат: CHECKIN <имя> <дни>\n";
         send(sock, err, strlen(err), 0);
-        broadcast_monitor(err);
+        tag_and_broadcast(sock, err);
         return;
     }
 
@@ -100,23 +119,25 @@ void handle_checkin(int sock, const char *args) {
                          "ASSIGNED Клиент %s → Номер %d на %d суток\n",
                          name, i+1, days);
                 send(sock, resp, strlen(resp), 0);
-                broadcast_monitor(resp);
+                tag_and_broadcast(sock, resp);
                 break;
             }
         }
     } else {
         pthread_mutex_unlock(&mtx_rooms);
-        pthread_mutex_lock(&mtx_queue);
-        queue_node *node = malloc(sizeof(*node));
-        if (!node) { 
-            perror("malloc"); exit(1); 
-        }
 
+        queue_node *node = malloc(sizeof(*node));
+        if (!node) {
+            perror("malloc");
+            exit(1);
+        }
         node->guest.cur_days = days;
         strncpy(node->guest.name, name, NAME_LEN-1);
         node->guest.name[NAME_LEN-1] = '\0';
         node->sock = sock;
         node->next = NULL;
+
+        pthread_mutex_lock(&mtx_queue);
         if (!q_tail) {
             q_head = q_tail = node;
         } else {
@@ -132,7 +153,7 @@ void handle_checkin(int sock, const char *args) {
                  "QUEUED Клиент %s в очереди под номером %d\n",
                  name, pos);
         send(sock, resp, strlen(resp), 0);
-        broadcast_monitor(resp);
+        tag_and_broadcast(sock, resp);
         return;
     }
     pthread_mutex_unlock(&mtx_rooms);
@@ -143,7 +164,7 @@ void handle_queue_request(int sock) {
     if (!q_head) {
         const char *empty = "QUEUE Пусто\n";
         send(sock, empty, strlen(empty), 0);
-        broadcast_monitor(empty);
+        tag_and_broadcast(sock, empty);
     } else {
         char resp[512] = "QUEUE Список ожидающих:\n";
         queue_node *p = q_head;
@@ -155,7 +176,7 @@ void handle_queue_request(int sock) {
             strncat(resp, line, sizeof(resp) - strlen(resp) - 1);
         }
         send(sock, resp, strlen(resp), 0);
-        broadcast_monitor(resp);
+        tag_and_broadcast(sock, resp);
     }
     pthread_mutex_unlock(&mtx_queue);
 }
@@ -165,7 +186,6 @@ void* clock_thread(void *arg) {
     while (running) {
         sleep(DAY_TIME);
 
-        
         pthread_mutex_lock(&mtx_rooms);
         for (int i = 0; i < MAX_ROOMS; i++) {
             if (hotel[i].cur_days > 0) {
@@ -178,7 +198,6 @@ void* clock_thread(void *arg) {
         }
         pthread_mutex_unlock(&mtx_rooms);
 
-        
         while (1) {
             pthread_mutex_lock(&mtx_rooms);
             int have_room = free_counter > 0;
@@ -197,7 +216,6 @@ void* clock_thread(void *arg) {
             queue_len--;
             pthread_mutex_unlock(&mtx_queue);
 
-            
             pthread_mutex_lock(&mtx_rooms);
             for (int i = 0; i < MAX_ROOMS; i++) {
                 if (hotel[i].cur_days == 0) {
@@ -210,12 +228,10 @@ void* clock_thread(void *arg) {
                     snprintf(resp, sizeof(resp),
                              "ASSIGNED Клиент %s → Номер %d на %d суток\n",
                              node->guest.name, i+1, node->guest.cur_days);
-
                     if (send(node->sock, resp, strlen(resp), 0) < 0) {
-                        
                         close(node->sock);
                     } else {
-                        broadcast_monitor(resp);
+                        tag_and_broadcast(node->sock, resp);
                     }
                     break;
                 }
@@ -238,7 +254,7 @@ void* handle_client(void *arg) {
         buf[len] = '\0';
 
         if (strncmp(buf, "MONITOR", 7) != 0) {
-            broadcast_monitor(buf);
+            tag_and_broadcast(sock, buf);
         }
 
         if (strncmp(buf, "CHECKIN", 7) == 0) {
@@ -262,7 +278,7 @@ void* handle_client(void *arg) {
         else {
             const char *err = "ERROR неизвестная команда\n";
             send(sock, err, strlen(err), 0);
-            broadcast_monitor(err);
+            tag_and_broadcast(sock, err);
         }
     }
 
@@ -279,13 +295,11 @@ int main(int argc, char *argv[]) {
 
     signal(SIGPIPE, SIG_IGN);
 
-   
     setvbuf(stdout, NULL, _IOLBF, 0);
 
     if (atexit(clean_queue)   != 0 ||
         atexit(clean_listener) != 0 ||
-        atexit(finally_msg)    != 0)
-    {
+        atexit(finally_msg)    != 0) {
         fprintf(stderr, "Не удалось зарегистрировать atexit-функции\n");
         return 1;
     }
@@ -298,7 +312,6 @@ int main(int argc, char *argv[]) {
         perror("sigaction SIGINT");
         exit(1);
     }
-    // ловим также SIGTERM, чтобы при 'kill' выполнить корректный shutdown
     if (sigaction(SIGTERM, &sa, NULL) < 0) {
         perror("sigaction SIGTERM");
         exit(1);
@@ -309,13 +322,12 @@ int main(int argc, char *argv[]) {
         perror("socket");
         exit(1);
     }
-    
+
     int opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
         perror("setsockopt SO_REUSEADDR");
         exit(1);
     }
-    
 
     struct sockaddr_in addr = {
         .sin_family      = AF_INET,
