@@ -253,6 +253,9 @@ void* handle_client(void *arg) {
         if (len <= 0) break;
         buf[len] = '\0';
 
+        printf("Получено от клиента (sock=%d): %s", sock, buf);
+        fflush(stdout);
+
         if (strncmp(buf, "MONITOR", 7) != 0) {
             tag_and_broadcast(sock, buf);
         }

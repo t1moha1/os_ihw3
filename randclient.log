@@ -1,15 +1,15 @@
-ASSIGNED Клиент Guest1 → Номер 1 на 5 суток
-ASSIGNED Клиент Guest2 → Номер 2 на 5 суток
-ASSIGNED Клиент Guest3 → Номер 3 на 1 суток
-ASSIGNED Клиент Guest4 → Номер 4 на 4 суток
-ASSIGNED Клиент Guest5 → Номер 5 на 1 суток
-ASSIGNED Клиент Guest6 → Номер 3 на 2 суток
-ASSIGNED Клиент Guest7 → Номер 5 на 2 суток
-ASSIGNED Клиент Guest8 → Номер 6 на 5 суток
-ASSIGNED Клиент Guest9 → Номер 7 на 5 суток
-ASSIGNED Клиент Guest10 → Номер 8 на 4 суток
-ASSIGNED Клиент Guest11 → Номер 9 на 3 суток
-ASSIGNED Клиент Guest12 → Номер 10 на 4 суток
-QUEUED Клиент Guest13 в очереди под номером 1
-QUEUED Клиент Guest14 в очереди под номером 2
-QUEUED Клиент Guest15 в очереди под номером 3
+ASSIGNED Клиент Guest1 → Номер 1 на 2 суток
+ASSIGNED Клиент Guest2 → Номер 2 на 3 суток
+ASSIGNED Клиент Guest3 → Номер 3 на 2 суток
+ASSIGNED Клиент Guest4 → Номер 4 на 5 суток
+ASSIGNED Клиент Guest5 → Номер 5 на 4 суток
+ASSIGNED Клиент Guest6 → Номер 6 на 2 суток
+ASSIGNED Клиент Guest7 → Номер 7 на 4 суток
+ASSIGNED Клиент Guest8 → Номер 8 на 2 суток
+ASSIGNED Клиент Guest9 → Номер 9 на 5 суток
+ASSIGNED Клиент Guest10 → Номер 10 на 2 суток
+QUEUED Клиент Guest11 в очереди под номером 1
+QUEUED Клиент Guest12 в очереди под номером 2
+ASSIGNED Клиент Guest11 → Номер 1 на 2 суток
+ASSIGNED Клиент Guest12 → Номер 3 на 2 суток
+ASSIGNED Клиент Guest13 → Номер 6 на 5 суток

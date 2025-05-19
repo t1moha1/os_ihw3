@@ -1,3 +1,19 @@
 Сервер запущен на порту 8080
+Получено от клиента (sock=4): CHECKIN Guest1 2
+Получено от клиента (sock=5): MONITOR
+Получено от клиента (sock=4): CHECKIN Guest2 3
+Получено от клиента (sock=4): CHECKIN Guest3 2
+Получено от клиента (sock=4): CHECKIN Guest4 5
+Получено от клиента (sock=4): CHECKIN Guest5 4
+Получено от клиента (sock=4): CHECKIN Guest6 2
+Получено от клиента (sock=4): CHECKIN Guest7 4
+Получено от клиента (sock=4): CHECKIN Guest8 2
+Получено от клиента (sock=4): CHECKIN Guest9 5
+Получено от клиента (sock=4): CHECKIN Guest10 2
+Получено от клиента (sock=4): CHECKIN Guest11 2
+Получено от клиента (sock=4): CHECKIN Guest12 2
+Получено от клиента (sock=4): CHECKIN Guest13 5
+Получено от клиента (sock=4): CHECKIN Guest14 1
+Получено от клиента (sock=4): CHECKIN Guest15 2
 accept: Interrupted system call
 Сервер корректно завершил работу.
