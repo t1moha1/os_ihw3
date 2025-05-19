@@ -165,6 +165,7 @@ void* clock_thread(void *arg) {
     while (running) {
         sleep(DAY_TIME);
 
+        
         pthread_mutex_lock(&mtx_rooms);
         for (int i = 0; i < MAX_ROOMS; i++) {
             if (hotel[i].cur_days > 0) {
@@ -177,6 +178,7 @@ void* clock_thread(void *arg) {
         }
         pthread_mutex_unlock(&mtx_rooms);
 
+        
         while (1) {
             pthread_mutex_lock(&mtx_rooms);
             int have_room = free_counter > 0;
@@ -195,6 +197,7 @@ void* clock_thread(void *arg) {
             queue_len--;
             pthread_mutex_unlock(&mtx_queue);
 
+            
             pthread_mutex_lock(&mtx_rooms);
             for (int i = 0; i < MAX_ROOMS; i++) {
                 if (hotel[i].cur_days == 0) {
@@ -202,12 +205,18 @@ void* clock_thread(void *arg) {
                     strncpy(hotel[i].name, node->guest.name, NAME_LEN-1);
                     hotel[i].name[NAME_LEN-1] = '\0';
                     free_counter--;
+
                     char resp[256];
                     snprintf(resp, sizeof(resp),
-                              "ASSIGNED Клиент %s → Номер %d на %d суток\n",
-                              node->guest.name, i+1, node->guest.cur_days);
-                    send(node->sock, resp, strlen(resp), 0);
-                    broadcast_monitor(resp);
+                             "ASSIGNED Клиент %s → Номер %d на %d суток\n",
+                             node->guest.name, i+1, node->guest.cur_days);
+
+                    if (send(node->sock, resp, strlen(resp), 0) < 0) {
+                        
+                        close(node->sock);
+                    } else {
+                        broadcast_monitor(resp);
+                    }
                     break;
                 }
             }
@@ -270,7 +279,7 @@ int main(int argc, char *argv[]) {
         atexit(finally_msg)    != 0)
     {
         fprintf(stderr, "Не удалось зарегистрировать atexit-функции\n");
-        return EXIT_FAILURE;
+        return 1;
     }
 
     struct sigaction sa = {0};
@@ -284,8 +293,16 @@ int main(int argc, char *argv[]) {
 
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) { 
-        perror("socket"); exit(1); 
+        perror("socket"); 
+        exit(1); 
     }
+    
+    int opt = 1;
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        perror("setsockopt SO_REUSEADDR");
+        exit(1);
+    }
+    
 
     struct sockaddr_in addr = {
         .sin_family      = AF_INET,
